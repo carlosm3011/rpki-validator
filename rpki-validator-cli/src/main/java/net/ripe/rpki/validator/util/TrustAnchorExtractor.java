@@ -87,23 +87,34 @@ public class TrustAnchorExtractor {
     }
 
     private X509ResourceCertificate getRemoteCertificate(TrustAnchorLocator tal, String rootCertificateOutputDir) {
-        rsync.reset();
-        rsync.setSource(tal.getCertificateLocation().toString());
-
-        String targetDirectoryPath = rootCertificateOutputDir;
+    	String targetDirectoryPath = rootCertificateOutputDir;
         File targetDirectory = new File(targetDirectoryPath);
         if (!targetDirectory.exists()) {
-            targetDirectory.mkdirs();
+             targetDirectory.mkdirs();
         }
-
         String dest = targetDirectoryPath + "/" + tal.getFile().getName() + ".cer";
-        rsync.setDestination(dest);
-        int exitStatus = rsync.execute();
+  //      System.out.print("dest: "+dest);
+        int exitStatus=1, tamanio=tal.getCertificateLocations().length, i=0;
+        System.out.println("MPP%% TAL URIs found: "+tamanio);
+        while(exitStatus!=0 && i<tamanio){
+	        rsync.reset();
+	        String uri=tal.getCertificateLocations()[i].toString();
+	        System.out.println("MPP%% Trying repository fetch from: "+uri);
+	        rsync.setSource(uri);
+	        rsync.setDestination(dest);
+	        exitStatus = rsync.execute();
+	        if (exitStatus !=0 ) {
+	        	System.out.println("MPP%% fetch from URI ["+uri+"] FAILED! Failing over to next URI ");
+	        }
+	        i++;
+        }
+        
         switch (exitStatus) {
         case 0:
             return CertificateRepositoryObjectLocalFileHelper.readCertificate(new File(dest));
         default:
-            throw new ValidatorIOException("rsync failed while retrieving remote certificate from '" + tal.getCertificateLocation() + "': exit status: " + exitStatus);
+            // throw new ValidatorIOException("rsync failed while retrieving remote certificate from '" + tal.getCertificateLocation() + "': exit status: " + exitStatus);
+        	throw new ValidatorIOException("MPP%% rsync failed while retrieving remote certificate from all locations exit status: " + exitStatus);        	
         }
     }
 }

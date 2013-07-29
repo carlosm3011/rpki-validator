@@ -54,6 +54,7 @@ public class TrustAnchorLocator {
     private final String caName;
 
     private final URI certificateLocation;
+    private final URI[] certificateLocations;
 
     private final String publicKeyInfo;
 
@@ -83,11 +84,18 @@ public class TrustAnchorLocator {
         String caName = FilenameUtils.getBaseName(file.getName());
         String[] lines = contents.trim().split("\\s*(\r\n|\n\r|\n|\r)\\s*");
         URI location = new URI(lines[0]);
-        int i = 1;
-        while (lines[i].startsWith("rsync://"))
+        int i = 1,j=0;
+        while (lines[i].startsWith("rsync://")){
             ++i;
+        }
+        URI[] locations =  new URI[i];
+        while (lines[j].startsWith("rsync://")){
+            locations[j]=new URI(lines[j]);
+            j++;
+        }
         String publicKeyInfo = StringUtils.join(Arrays.copyOfRange(lines, i, lines.length));
-        return new TrustAnchorLocator(file, caName, location, publicKeyInfo, new ArrayList<URI>());
+        return new TrustAnchorLocator(file, caName, location,locations,publicKeyInfo, new ArrayList<URI>());
+        //return new TrustAnchorLocator(file, caName, location,null,publicKeyInfo, new ArrayList<URI>());
     }
 
     private static TrustAnchorLocator readExtendedTrustAnchorLocator(File file, String contents) throws IOException, URISyntaxException {
@@ -113,6 +121,18 @@ public class TrustAnchorLocator {
         return new TrustAnchorLocator(file, caName, location, publicKeyInfo, prefetchUris);
     }
 
+    public TrustAnchorLocator(File file, String caName, URI location,URI[] locations, String publicKeyInfo, List<URI> prefetchUris) {
+        Validate.notEmpty(caName, "'ca.name' must be provided");
+        Validate.notNull(location, "'certificate.location' must be provided");
+        Validate.notEmpty(publicKeyInfo, "'public.key.info' must be provided");
+        this.file = file;
+        this.caName = caName;
+        this.certificateLocation = location;
+        this.certificateLocations = locations;
+        this.publicKeyInfo = publicKeyInfo;
+        this.prefetchUris = prefetchUris;
+    }
+    
     public TrustAnchorLocator(File file, String caName, URI location, String publicKeyInfo, List<URI> prefetchUris) {
         Validate.notEmpty(caName, "'ca.name' must be provided");
         Validate.notNull(location, "'certificate.location' must be provided");
@@ -120,6 +140,7 @@ public class TrustAnchorLocator {
         this.file = file;
         this.caName = caName;
         this.certificateLocation = location;
+        this.certificateLocations = new URI[2];
         this.publicKeyInfo = publicKeyInfo;
         this.prefetchUris = prefetchUris;
     }
@@ -134,6 +155,9 @@ public class TrustAnchorLocator {
 
     public URI getCertificateLocation() {
         return certificateLocation;
+    }
+    public URI[] getCertificateLocations() {
+        return certificateLocations;
     }
 
     public String getPublicKeyInfo() {
